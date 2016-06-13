@@ -1,0 +1,3 @@
+SPARK_HOME=/usr/share/spark
+SPARK_MASTER_USER=spark
+SPARK_LOG_DIR=/var/log/spark
