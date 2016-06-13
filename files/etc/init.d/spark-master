@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+
+DESC="Spark Cluster Master"
+NAME=spark-master
+SCRIPTNAME=/etc/init.d/$NAME
+SPARK_HOME=/usr/share/spark
+SPARK_PID_DIR=/tmp
+SPARK_MASTER_USER=spark
+
+# Read default configuration file if present
+[ -r /etc/default/$NAME ] && . /etc/default/$NAME
+
+if [ "$SPARK_IDENT_STRING" = "" ]; then
+  export SPARK_IDENT_STRING="$SPARK_MASTER_USER"
+fi
+
+pid="$SPARK_PID_DIR/spark-$SPARK_IDENT_STRING-org.apache.spark.deploy.master.Master-1.pid"
+export SPARK_LOG_DIR="$SPARK_LOG_DIR"
+
+# Define LSB log_* functions
+. /lib/lsb/init-functions
+
+is_running() {
+  if [ -f $pid ]; then
+    TARGET_ID="$(cat "$pid")"
+    if [[ $(ps -p "$TARGET_ID" -o comm=) =~ "java" ]]; then
+      return 0
+    else
+      return 1
+    fi
+  fi
+  return 3
+}
+
+do_start() {
+  start-stop-daemon --start --chuid "$SPARK_MASTER_USER" -a "$SPARK_HOME/sbin/start-master.sh" -q -p "$pid" > /dev/null || return 2
+}
+
+do_stop() {
+  start-stop-daemon --start --chuid "$SPARK_MASTER_USER" -x "$SPARK_HOME/sbin/stop-master.sh"
+}
+
+case "$1" in
+  start)
+    do_start
+    ;;
+  stop)
+    do_stop
+    ;;
+  restart)
+    do_stop
+    do_start
+    ;;
+  status)
+    is_running
+    stat=$?
+    case "$stat" in
+      0) log_success_msg "$DESC is running" ;;
+      1) log_failure_msg "could not access pidfile for $DESC" ;;
+      *) log_success_msg "$DESC is not running" ;;
+    esac
+    exit "$stat"
+    ;;
+  *)
+    echo "Usage: $SCRIPTNAME {start|stop|restart|status}" >&2
+    exit 3
+    ;;
+esac
